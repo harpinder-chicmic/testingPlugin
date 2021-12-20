@@ -15,8 +15,6 @@
     <engine name="cordova" version=">=3.0" />
   </engines>
 
-  <js-module src="www/vast-client.js" name="DMVAST"></js-module>
-
   <js-module src="www/Smaato.js" name="Smaato">
     <clobbers target="window.plugins.Smaato" />
   </js-module>
