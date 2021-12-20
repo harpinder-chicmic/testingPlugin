@@ -1,8 +1,5 @@
 var argscheck = require('cordova/argscheck'),
-	DMVAST = require('./DMVAST'),
-    exec = require('cordova/exec');
-
-console.log("DMVAST", DMVAST);
+exec = require('cordova/exec');
 
 var smaatoExport = {};
 
