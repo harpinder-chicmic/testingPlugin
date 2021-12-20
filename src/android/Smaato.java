@@ -85,6 +85,10 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     private static final String ACTION_CREATE_INTERSTITIAL_VIEW = "showInterstitialAd";
     private static final String ACTION_PLAY_VIDEO = "play";
     private static final String ACTION_CLOSE_VIDEO = "close";
+    private static final String ACTION_CLOSE_BANNER_AD = "closeBannerAd";
+    private static final String ACTION_CLOSE_REWARDED_AD = "closeRewardedAd";
+
+
 
     /* options */
     private static final String OPT_PUBLISHER_ID = "publisherId";
@@ -236,6 +240,14 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 
             return true;
         }
+        else if (ACTION_CLOSE_BANNER_AD.equals(action)) {
+
+            return true;
+        }
+        else if (ACTION_CLOSE_REWARDED_AD.equals(action)) {
+            
+            return true;
+        }
         else {
             Log.d(TAG, String.format("Invalid action passed: %s", action));
             result = new PluginResult(PluginResult.Status.INVALID_ACTION);
@@ -290,12 +302,12 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
         if(options.has(OPT_REWARDED_AD_ID)) this.rewardedAdId = options.optString( OPT_REWARDED_AD_ID );
 
 //        if(options.has(OPT_AD_SIZE)) this.adSize = adSizeFromString( options.optString( OPT_AD_SIZE ) );
-        if(options.has(OPT_BANNER_AT_TOP)) this.bannerAtTop = options.optBoolean( OPT_BANNER_AT_TOP );
-        if(options.has(OPT_OVERLAP)) this.bannerOverlap = options.optBoolean( OPT_OVERLAP );
-        if(options.has(OPT_OFFSET_TOPBAR)) this.offsetTopBar = options.optBoolean( OPT_OFFSET_TOPBAR );
-        if(options.has(OPT_IS_TESTING)) this.isTesting  = options.optBoolean( OPT_IS_TESTING );
-        if(options.has(OPT_AD_EXTRAS)) this.adExtras  = options.optJSONObject( OPT_AD_EXTRAS );
-        if(options.has(OPT_AUTO_SHOW)) this.autoShow  = options.optBoolean( OPT_AUTO_SHOW );
+//        if(options.has(OPT_BANNER_AT_TOP)) this.bannerAtTop = options.optBoolean( OPT_BANNER_AT_TOP );
+//        if(options.has(OPT_OVERLAP)) this.bannerOverlap = options.optBoolean( OPT_OVERLAP );
+//        if(options.has(OPT_OFFSET_TOPBAR)) this.offsetTopBar = options.optBoolean( OPT_OFFSET_TOPBAR );
+//        if(options.has(OPT_IS_TESTING)) this.isTesting  = options.optBoolean( OPT_IS_TESTING );
+//        if(options.has(OPT_AD_EXTRAS)) this.adExtras  = options.optJSONObject( OPT_AD_EXTRAS );
+//        if(options.has(OPT_AUTO_SHOW)) this.autoShow  = options.optBoolean( OPT_AUTO_SHOW );
 
         Log.i(TAG,"Publisher ID 1: " +publisherId);
     }
@@ -306,19 +318,19 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
         Log.d(TAG, "executeShowBannerAd: called");
         this.setOptions( options );
         final CallbackContext delayCallback = callbackContext;
-        cordova.getActivity().runOnUiThread(new Runnable(){
+        this.cordova.getActivity().runOnUiThread(new Runnable(){
             @Override
-            public void run() { 
+            public void run() {
                 RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(
-                    RelativeLayout.LayoutParams.MATCH_PARENT,
-                    RelativeLayout.LayoutParams.WRAP_CONTENT);
+                        RelativeLayout.LayoutParams.MATCH_PARENT,
+                        RelativeLayout.LayoutParams.WRAP_CONTENT);
                 layoutParams.addRule(bannerAtTop ? RelativeLayout.ALIGN_PARENT_TOP : RelativeLayout.ALIGN_PARENT_BOTTOM);
                 if (adViewLayout == null) {
                     Log.d("Raj","adViewLayout is null re!");
                     adViewLayout = new RelativeLayout(cordova.getActivity());
                     RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                        RelativeLayout.LayoutParams.MATCH_PARENT,
-                        RelativeLayout.LayoutParams.MATCH_PARENT);
+                            RelativeLayout.LayoutParams.MATCH_PARENT,
+                            RelativeLayout.LayoutParams.MATCH_PARENT);
                     try {
                         ((ViewGroup)(((View)webView.getClass().getMethod("getView").invoke(webView)).getParent())).addView(adViewLayout, params);
                     } catch (Exception e) {
@@ -334,6 +346,17 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
                 }
                 bannerView.loadAd(bannerAdId,BannerAdSize.XX_LARGE_320x50);
                 bannerView.setEventListener(bannerAdEventListener);
+
+                RelativeLayout.LayoutParams layoutParams2 = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.MATCH_PARENT,
+                        RelativeLayout.LayoutParams.WRAP_CONTENT);
+                layoutParams2.addRule(!bannerAtTop ? RelativeLayout.ALIGN_PARENT_TOP : RelativeLayout.ALIGN_PARENT_BOTTOM);
+
+                BannerView bannerView2 =  new BannerView(adViewLayout.getContext());
+                adViewLayout.addView(bannerView2,layoutParams2);
+                bannerView2.loadAd(bannerAdId,BannerAdSize.XX_LARGE_320x50);
+                bannerView2.setEventListener(bannerAdEventListener);
+
                 if(delayCallback!=null)
                     delayCallback.success();
             }
@@ -343,6 +366,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 
     private PluginResult executeShowInterstitialAd(JSONObject options, CallbackContext callbackContext) {
         Log.d(TAG,"executeShowInterstitialAd : called");
+        adViewLayout = null;
         this.setOptions( options );
         final CallbackContext delayCallback = callbackContext;
         cordova.getActivity().runOnUiThread(new Runnable(){
@@ -410,7 +434,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     BannerView.EventListener bannerAdEventListener = new BannerView.EventListener() {
         @Override
         public void onAdLoaded(@NonNull BannerView bannerView) {
-            Toast.makeText(cordova.getActivity(), "Banner load success, can show ad", Toast.LENGTH_LONG).show();
+//            Toast.makeText(cordova.getActivity(), "Banner load success, can show ad", Toast.LENGTH_LONG).show();
             Log.d("AAA", "Banner load success, can show ad"+bannerView);
         }
 
@@ -427,7 +451,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 
         @Override
         public void onAdClicked(@NonNull BannerView bannerView) {
-            Toast.makeText(cordova.getActivity(), "Banner clicked", Toast.LENGTH_LONG).show();
+//            Toast.makeText(cordova.getActivity(), "Banner clicked", Toast.LENGTH_LONG).show();
             Log.d("AAA", "Banner clicked");
         }
 

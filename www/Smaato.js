@@ -117,6 +117,14 @@ function(options, successCallback, failureCallback) {
   console.log('showRewardedAd called 2');
 };
 
+smaatoExport.closeBannerAd = function (successCallback, errorCallback) {
+  exec(successCallback, errorCallback, "Smaato", "closeBannerAd", []);
+},
+
+smaatoExport.closeRewardedAd = function (successCallback, errorCallback) {
+  exec(successCallback, errorCallback, "Smaato", "closeRewardedAd", []);
+},
+
 smaatoExport.play  =  function (path, options, successCallback, errorCallback) {
   options = this.merge(this.DEFAULT_OPTIONS, options);
   exec(successCallback, errorCallback, "Smaato", "play", [path, options]);
@@ -135,7 +143,6 @@ smaatoExport.CALING_MODE= {
   SCALE_TO_FIT: 1,
   SCALE_TO_FIT_WITH_CROPPING: 2
 },
-
 
 smaatoExport.merge= function () {
   var obj = {};
