@@ -10,14 +10,6 @@
   <author>Pedro Santos</author>
   <license>MIT</license>
   <keywords>ad,smaato, ads, advertisement, banner, interstitial</keywords>
-  
-  <js-module src="www/SmaatoPositions.js" name="SmaatoPositions">
-    <clobbers target="window.SMAATO_AD_POSITION" />
-  </js-module>
-
-  <js-module src="www/SmaatoSizes.js" name="SmaatoSizes">
-    <clobbers target="window.SMAATO_AD_SIZE" />
-  </js-module>
 
   <engines>
     <engine name="cordova" version=">=3.0" />
