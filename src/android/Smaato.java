@@ -64,18 +64,52 @@ import java.io.IOException;
 
 public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPreparedListener, OnErrorListener, OnDismissListener {
 
+    enum rewardAdEvent{
+        onAdLoaded,
+        onAdFailedToLoad,
+        onAdError,
+        onAdClosed,
+        onAdClicked,
+        onAdStarted,
+        onAdReward,
+        onAdTTLExpired
+    }
+    enum bannerAdEvent{
+        onAdLoaded,
+        onAdFailedToLoad,
+        onAdClicked,
+        onAdImpression,
+        onAdTTLExpired
+    }
+    enum interstitialAdEvent{
+        onAdLoaded,
+        onAdFailedToLoad,
+        onAdError,
+        onAdClosed,
+        onAdClicked,
+        onAdOpened,
+        onAdImpression,
+        onAdTTLExpired
+    }
+
     //Video player
     protected static final String LOG_TAG = "VideoPlayer";
     protected static final String ASSETS = "/android_asset/";
     private CallbackContext callbackContext = null;
+
+    private CallbackContext callbackRewardAd = null;
+    private CallbackContext callbackInterstitialAd = null;
+    private CallbackContext callbackBannerAd = null;
+
     private Dialog dialog;
-    private VideoView videoView;
     private MediaPlayer player;
 
     private static final String EMPTY = "";
     public static final String TAG = "Smaato";
-    private static final String ANDROID_PLATFORM = "Android";
+
     private RelativeLayout adViewLayout = null;
+    private BannerView bannerView = null;
+    private BannerView bannerView2 = null;
 
     private static final String ACTION_INIT_SMAATO = "initSmaato";
     private static final String ACTION_SET_OPTIONS = "setOptions";
@@ -88,20 +122,12 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     private static final String ACTION_CLOSE_BANNER_AD = "closeBannerAd";
     private static final String ACTION_CLOSE_REWARDED_AD = "closeRewardedAd";
 
-
-
     /* options */
     private static final String OPT_PUBLISHER_ID = "publisherId";
     private static final String OPT_INTERSTITIAL_AD_ID = "interstitialAdId";
     private static final String OPT_BANNER_AD_ID = "bannerAdId";
     private static final String OPT_REWARDED_AD_ID = "rewardedAdId";
     private static final String OPT_AD_SIZE = "adSize";
-    private static final String OPT_BANNER_AT_TOP = "bannerAtTop";
-    private static final String OPT_OVERLAP = "bannerOverlap";
-    private static final String OPT_OFFSET_TOPBAR = "offsetTopBar";
-    private static final String OPT_IS_TESTING = "isTesting";
-    private static final String OPT_AD_EXTRAS = "adExtras";
-    private static final String OPT_AUTO_SHOW = "autoShow";
 
     //Options
     private String publisherId = EMPTY;
@@ -121,25 +147,6 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     RewardedInterstitialAd rewardAd = null;
     public Smaato() {
     }
-
-    /**
-     * Sets the context of the Command. This can then be used to do things like
-     * get file paths associated with the Activity.
-     *
-     * @param cordova The context of the main Activity.
-     * @param webView The CordovaWebView Cordova is running in.
-     */
-//    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
-//        super.initialize(cordova, webView);
-//        Log.i(TAG,"initial called");
-//
-////        Config config = Config.builder().setLogLevel(LogLevel.ERROR).setHttpsOnly(true).build();
-////        SmaatoSdk.init(cordova.getActivity().getApplication(),config, "1100042525");
-////        SmaatoSdk.setGPSEnabled(true);
-//
-//        Log.i(TAG,"Publisher ID 2 : " +publisherId);
-//    }
-
     /**
      * Executes the request and returns PluginResult.
      *
@@ -219,7 +226,6 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
             pluginResult.setKeepCallback(true);
             callbackContext.sendPluginResult(pluginResult);
             callbackContext = null;
-
             return true;
         }
         else if (ACTION_CLOSE_VIDEO.equals(action)) {
@@ -241,6 +247,11 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
             return true;
         }
         else if (ACTION_CLOSE_BANNER_AD.equals(action)) {
+
+            Log.d(TAG, String.format("Action passed: %s", action));
+            bannerView.destroy();
+            bannerView2.destroy();
+            Log.d(TAG, String.format("Action passed: %s", action));
 
             return true;
         }
@@ -302,12 +313,6 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
         if(options.has(OPT_REWARDED_AD_ID)) this.rewardedAdId = options.optString( OPT_REWARDED_AD_ID );
 
 //        if(options.has(OPT_AD_SIZE)) this.adSize = adSizeFromString( options.optString( OPT_AD_SIZE ) );
-//        if(options.has(OPT_BANNER_AT_TOP)) this.bannerAtTop = options.optBoolean( OPT_BANNER_AT_TOP );
-//        if(options.has(OPT_OVERLAP)) this.bannerOverlap = options.optBoolean( OPT_OVERLAP );
-//        if(options.has(OPT_OFFSET_TOPBAR)) this.offsetTopBar = options.optBoolean( OPT_OFFSET_TOPBAR );
-//        if(options.has(OPT_IS_TESTING)) this.isTesting  = options.optBoolean( OPT_IS_TESTING );
-//        if(options.has(OPT_AD_EXTRAS)) this.adExtras  = options.optJSONObject( OPT_AD_EXTRAS );
-//        if(options.has(OPT_AUTO_SHOW)) this.autoShow  = options.optBoolean( OPT_AUTO_SHOW );
 
         Log.i(TAG,"Publisher ID 1: " +publisherId);
     }
@@ -317,7 +322,8 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     private PluginResult executeShowBannerAd(JSONObject options, CallbackContext callbackContext) {
         Log.d(TAG, "executeShowBannerAd: called");
         this.setOptions( options );
-        final CallbackContext delayCallback = callbackContext;
+        callbackBannerAd = callbackContext;
+
         this.cordova.getActivity().runOnUiThread(new Runnable(){
             @Override
             public void run() {
@@ -338,7 +344,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
                     }
                 }
                 adViewLayout.bringToFront();
-                BannerView bannerView =  new BannerView(adViewLayout.getContext());
+                bannerView =  new BannerView(adViewLayout.getContext());
                 adViewLayout.addView(bannerView,layoutParams);
                 if(bannerAdId==null || bannerAdId.equals(EMPTY)){
                     Log.e("bannerAd", "Please put your smaato bannerAd id into the javascript code. No ad to display.");
@@ -347,18 +353,19 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
                 bannerView.loadAd(bannerAdId,BannerAdSize.XX_LARGE_320x50);
                 bannerView.setEventListener(bannerAdEventListener);
 
+
                 RelativeLayout.LayoutParams layoutParams2 = new RelativeLayout.LayoutParams(
                         RelativeLayout.LayoutParams.MATCH_PARENT,
                         RelativeLayout.LayoutParams.WRAP_CONTENT);
                 layoutParams2.addRule(!bannerAtTop ? RelativeLayout.ALIGN_PARENT_TOP : RelativeLayout.ALIGN_PARENT_BOTTOM);
 
-                BannerView bannerView2 =  new BannerView(adViewLayout.getContext());
+                bannerView2 =  new BannerView(adViewLayout.getContext());
                 adViewLayout.addView(bannerView2,layoutParams2);
                 bannerView2.loadAd(bannerAdId,BannerAdSize.XX_LARGE_320x50);
                 bannerView2.setEventListener(bannerAdEventListener);
 
-                if(delayCallback!=null)
-                    delayCallback.success();
+//                if(callbackBannerAd!=null)
+//                    callbackBannerAd.success();
             }
         });
         return null;
@@ -368,7 +375,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
         Log.d(TAG,"executeShowInterstitialAd : called");
         adViewLayout = null;
         this.setOptions( options );
-        final CallbackContext delayCallback = callbackContext;
+        callbackInterstitialAd = callbackContext;
         cordova.getActivity().runOnUiThread(new Runnable(){
             @Override
             public void run() {
@@ -380,8 +387,8 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 
                 Interstitial.loadAd(interstitialAdId, interstitialAdEventListener);
 
-                if(delayCallback!=null)
-                    delayCallback.success();
+//                if(callbackInterstitialAd!=null)
+//                    callbackInterstitialAd.success();
             }
         });
         return null;
@@ -390,7 +397,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     private PluginResult executeLoadRewardedAd(JSONObject options, CallbackContext callbackContext) {
         Log.d(TAG, "executeLoadRewardedAd: called");
         this.setOptions( options );
-        final CallbackContext delayCallback = callbackContext;
+        callbackRewardAd = callbackContext;
 
         cordova.getActivity().runOnUiThread(new Runnable(){
             @Override
@@ -401,9 +408,8 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 //                    return null;
                 } 
                 RewardedInterstitial.loadAd(rewardedAdId,eventListenerReward);
-
-                if(delayCallback!=null)
-                    delayCallback.success();
+//                if(callbackRewardAd!=null)
+//                    callbackRewardAd.success();
             }
         });
 
@@ -412,7 +418,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 
     private PluginResult executeShowRewardedAd(JSONObject options, CallbackContext callbackContext) {
         Log.d(TAG, "executeShowRewardedAd: called");
-        final CallbackContext delayCallback = callbackContext;
+        callbackRewardAd = callbackContext;
 
         cordova.getActivity().runOnUiThread(new Runnable(){
             @Override
@@ -420,11 +426,11 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
 
                 if(rewardAd != null)
                     rewardAd.showAd();
-                else
-                    Toast.makeText(cordova.getActivity(), "Ad is not loaded yet.", Toast.LENGTH_SHORT).show();
-
-                if(delayCallback!=null)
-                    delayCallback.success();
+                else{
+                    PluginResult result = new PluginResult(PluginResult.Status.ERROR,rewardAdEvent.onAdFailedToLoad.ordinal() );
+                    result.setKeepCallback(true);
+                    callbackRewardAd.sendPluginResult(result);
+                }
             }
         });
 
@@ -434,30 +440,36 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
     BannerView.EventListener bannerAdEventListener = new BannerView.EventListener() {
         @Override
         public void onAdLoaded(@NonNull BannerView bannerView) {
-//            Toast.makeText(cordova.getActivity(), "Banner load success, can show ad", Toast.LENGTH_LONG).show();
-            Log.d("AAA", "Banner load success, can show ad"+bannerView);
+            PluginResult result = new PluginResult(PluginResult.Status.OK,bannerAdEvent.onAdLoaded.ordinal() );
+            result.setKeepCallback(true);
+            callbackBannerAd.sendPluginResult(result);
         }
-
         @Override
         public void onAdFailedToLoad(@NonNull BannerView bannerView, @NonNull BannerError bannerError) {
-            Toast.makeText(cordova.getActivity(), "Bannner load failed", Toast.LENGTH_LONG).show();
-            Log.d("AAA", "Bannner load failed"+bannerError.toString());
+            Log.d(TAG, "Banner load failed"+bannerError.toString());
+            bannerView.destroy();
+            bannerView2.destroy();
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,bannerAdEvent.onAdFailedToLoad.ordinal() );
+            result.setKeepCallback(true);
+            callbackBannerAd.sendPluginResult(result);
         }
-
         @Override
         public void onAdImpression(@NonNull BannerView bannerView) {
-            Log.d("AAA", "Banner onAdImpression");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,bannerAdEvent.onAdImpression.ordinal() );
+            result.setKeepCallback(true);
+            callbackBannerAd.sendPluginResult(result);
         }
-
         @Override
         public void onAdClicked(@NonNull BannerView bannerView) {
-//            Toast.makeText(cordova.getActivity(), "Banner clicked", Toast.LENGTH_LONG).show();
-            Log.d("AAA", "Banner clicked");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,bannerAdEvent.onAdClicked.ordinal() );
+            result.setKeepCallback(true);
+            callbackBannerAd.sendPluginResult(result);
         }
-
         @Override
         public void onAdTTLExpired(@NonNull BannerView bannerView) {
-            Log.d("AAA", "Banner onAdTTLExpired");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,bannerAdEvent.onAdTTLExpired.ordinal() );
+            result.setKeepCallback(true);
+            callbackBannerAd.sendPluginResult(result);
         }
     };
 
@@ -466,81 +478,109 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
         public void onAdLoaded(@NonNull InterstitialAd interstitialAd) {
             interstitialAd.setBackgroundColor(0xff123456);
             interstitialAd.showAd(cordova.getActivity());
-            Log.d(TAG, "onAdLoaded() called with: interstitialAd = [" + interstitialAd + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,interstitialAdEvent.onAdLoaded.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdFailedToLoad(@NonNull InterstitialRequestError interstitialRequestError) {
-            Log.d(TAG, "onAdFailedToLoad() called with: interstitialRequestError = [" + interstitialRequestError.getInterstitialError() + "]");
-            Interstitial.loadAd(interstitialAdId, interstitialAdEventListener);
+            Log.d(TAG, "[" + interstitialRequestError.getInterstitialError() + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,interstitialAdEvent.onAdFailedToLoad.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdError(@NonNull InterstitialAd interstitialAd, @NonNull InterstitialError interstitialError) {
-            Log.d(TAG, "onAdError() called with: interstitialAd = [" + interstitialAd + "], interstitialError = [" + interstitialError + "]");
+            Log.d(TAG, "InterstitialError = [" + interstitialError + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,interstitialAdEvent.onAdError.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdOpened(@NonNull InterstitialAd interstitialAd) {
-            Log.d(TAG, "onAdOpened() called with: interstitialAd = [" + interstitialAd + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,interstitialAdEvent.onAdOpened.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdClosed(@NonNull InterstitialAd interstitialAd) {
-            Log.d(TAG, "onAdClosed() called with: interstitialAd = [" + interstitialAd + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,interstitialAdEvent.onAdClosed.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdClicked(@NonNull InterstitialAd interstitialAd) {
-            Log.d(TAG, "onAdClicked() called with: interstitialAd = [" + interstitialAd + "]");
+            callbackInterstitialAd.error(interstitialAdEvent.onAdClicked.ordinal());
+            PluginResult result = new PluginResult(PluginResult.Status.OK,interstitialAdEvent.onAdClicked.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdImpression(@NonNull InterstitialAd interstitialAd) {
-            Log.d(TAG, "onAdImpression() called with: interstitialAd = [" + interstitialAd + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,interstitialAdEvent.onAdImpression.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
         @Override
         public void onAdTTLExpired(@NonNull InterstitialAd interstitialAd) {
-            Log.d(TAG, "onAdTTLExpired() called with: interstitialAd = [" + interstitialAd + "]");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,interstitialAdEvent.onAdTTLExpired.ordinal() );
+            result.setKeepCallback(true);
+            callbackInterstitialAd.sendPluginResult(result);
         }
     };
-
 
     com.smaato.sdk.rewarded.EventListener eventListenerReward = new com.smaato.sdk.rewarded.EventListener() {
         @Override
         public void onAdLoaded(@NonNull RewardedInterstitialAd rewardedInterstitialAd) {
-            Toast.makeText(cordova.getActivity(), "onAdLoaded Rewarded", Toast.LENGTH_SHORT).show();
-            //rewardedInterstitialAd.showAd();
+            PluginResult result = new PluginResult(PluginResult.Status.OK,rewardAdEvent.onAdLoaded.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
             rewardAd = rewardedInterstitialAd;
         }
         @Override
         public void onAdFailedToLoad(@NonNull RewardedRequestError rewardedRequestError) {
-           RewardedInterstitial.loadAd(rewardedAdId,eventListenerReward);
-            Log.d("onAdFailedToLoad","[ " + rewardedRequestError.getRewardedError() + " ]");
+            Log.d(TAG,"[ " + rewardedRequestError.getRewardedError() + " ]");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,rewardAdEvent.onAdFailedToLoad.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
         @Override
         public void onAdError(@NonNull RewardedInterstitialAd rewardedInterstitialAd, @NonNull RewardedError rewardedError) {
-            Log.d(TAG, "onAdError: Rewarded");
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,rewardAdEvent.onAdError.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
         @Override
         public void onAdClosed(@NonNull RewardedInterstitialAd rewardedInterstitialAd) {
-            Toast.makeText(cordova.getActivity(), "onAdClosed Rewarded", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "onAdClosed: Rewarded , play custom video now");
-            //playVideoAfterAds();
+            PluginResult result = new PluginResult(PluginResult.Status.OK,rewardAdEvent.onAdClosed.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
         @Override
         public void onAdClicked(@NonNull RewardedInterstitialAd rewardedInterstitialAd) {
-            Log.d(TAG, "onAdClicked: Rewarded");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,rewardAdEvent.onAdClicked.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
         @Override
         public void onAdStarted(@NonNull RewardedInterstitialAd rewardedInterstitialAd) {
-            Toast.makeText(cordova.getActivity(), "onAdStarted Rewarded", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "onAdStarted: Rewarded , the video started playing");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,rewardAdEvent.onAdStarted.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
         @Override
         public void onAdReward(@NonNull RewardedInterstitialAd rewardedInterstitialAd) {
-            Log.d(TAG, "onAdReward: Rewarded");
+            PluginResult result = new PluginResult(PluginResult.Status.OK,rewardAdEvent.onAdReward.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
         @Override
         public void onAdTTLExpired(@NonNull RewardedInterstitialAd rewardedInterstitialAd) {
-
+            PluginResult result = new PluginResult(PluginResult.Status.ERROR,rewardAdEvent.onAdTTLExpired.ordinal() );
+            result.setKeepCallback(true);
+            callbackRewardAd.sendPluginResult(result);
         }
     };
-
 
     //Custom Video
     public static String stripFileProtocol(String uriString) {
@@ -566,7 +606,7 @@ public class Smaato extends CordovaPlugin  implements OnCompletionListener, OnPr
         main.setHorizontalGravity(Gravity.CENTER_HORIZONTAL);
         main.setVerticalGravity(Gravity.CENTER_VERTICAL);
 
-        videoView = new VideoView(cordova.getActivity());
+        VideoView videoView = new VideoView(cordova.getActivity());
         videoView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         // videoView.setVideoURI(uri);
         // videoView.setVideoPath(path);
